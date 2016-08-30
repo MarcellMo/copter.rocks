@@ -22,21 +22,25 @@ void PID(float *command, float *YPR, float *pqr, const float *P_rate, const floa
 {
 	//PID-Controller
 
-	uint32_t Now = millis();
-	dt = ((Now - Prev)/1000.0f);
+	uint32_t Now = micros();
+	dt = ((Now - Prev)/1000000.0f);
+	Prev = Now;
 
-	error = (*command - *YPR) * M_PI/180 * *P_angle;
-	P_u = (error - *pqr) * *P_rate;
+	//P
+	rate_reference = (*command - *YPR) * M_PI/180 * *P_angle;
+	error = rate_command - *pqr;
+	P_u = (rate_command - *pqr) * *P_rate;
 
-	D_u = (((error - error_old) * *D_rate) - filter_coef) * *N_rate;
+	//D
+	D_u = ((error * *D_rate) - filter_coef) * *N_rate;
 	filter_coef = filter_coef + (D_u * dt);
 
-	I_u = (I_u + (error)* dt) * *I_rate;
+	//I
+	I_u = I_u + (error * dt  * *I_rate);
 
+	//Sum
 	*u = P_u + D_u + I_u;
 
-	error_old = error;
-	Prev = Now;
 }
 
 void AngleRateController(float *r, float *y, const float *P, float *u)
