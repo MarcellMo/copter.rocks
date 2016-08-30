@@ -25,3 +25,8 @@ uint32_t millis()
 	return timer_cnt;
 }
 
+uint32_t micros()
+{
+	return timer_cnt;
+}
+

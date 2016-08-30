@@ -10,6 +10,7 @@
 float FLY = 0.0;
 
 float dt = 0.0;
+float rate_reference = 0.0;
 float error = 0.0;
 float error_old = 0.0;
 float P_u = 0.0;
@@ -28,8 +29,8 @@ void PID(float *command, float *YPR, float *pqr, const float *P_rate, const floa
 
 	//P
 	rate_reference = (*command - *YPR) * M_PI/180 * *P_angle;
-	error = rate_command - *pqr;
-	P_u = (rate_command - *pqr) * *P_rate;
+	error = rate_reference - *pqr;
+	P_u = (rate_reference - *pqr) * *P_rate;
 
 	//D
 	D_u = ((error * *D_rate) - filter_coef) * *N_rate;
