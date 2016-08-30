@@ -43,7 +43,11 @@ void MPU9150_Setup()
 	{
 		if (MPU9150_SelfTest())
 		{
-			MPU9150_Calibrate(); // Calibrate gyro and accelerometers, load biases in bias registers
+			//MPU9150_Calibrate(); // Calibrate gyro and accelerometers, load biases in bias registers
+
+			// reset device, reset all registers, clear gyro and accelerometer bias registers
+			I2Cdev_writeByte((const I2C001Handle_type*)&MPU9150_I2C_Handle,MPU9150_ADDRESS, PWR_MGMT_1, 0x80); // Write a one to bit 7 reset bit; toggle reset device
+
 			delay(1000);
 			MPU9150_Init(); // Inititalize and configure accelerometer and gyroscope
 
@@ -449,7 +453,7 @@ void MPU_EXT_INT_ISR(void)
 
 				// Now we'll calculate the accleration value into actual g's
 				acc[0] = (float)accRaw[0]*aRes;  // get actual g value, this depends on scale being set
-				acc[1] = (float)accRaw[1]*aRes;
+				acc[1] = -(float)accRaw[1]*aRes;
 				acc[2] = (float)accRaw[2]*aRes;
 
 				// Read the x/y/z adc values
@@ -460,7 +464,7 @@ void MPU_EXT_INT_ISR(void)
 				getGres();
 
 				// Calculate the gyro value into actual degrees per rad
-				gyro[0] = (float)gyroRaw[0]*gRes * DEG_TO_RAD;  // get actual gyro value, this depends on scale being set
+				gyro[0] = -(float)gyroRaw[0]*gRes * DEG_TO_RAD;  // get actual gyro value, this depends on scale being set
 				gyro[1] = (float)gyroRaw[1]*gRes * DEG_TO_RAD;
 				gyro[2] = (float)gyroRaw[2]*gRes * DEG_TO_RAD;
 
@@ -476,9 +480,9 @@ void MPU_EXT_INT_ISR(void)
 					mRes = 10.*1229./4096.; // Conversion from 1229 microTesla full scale (4096) to 12.29 Gauss full scale
 					// So far, magnetometer bias is calculated and subtracted here manually, should construct an algorithm to do it automatically
 					// like the gyro and accelerometer biases
-					magbias[0] = 5.1864;//64.997;//132.208;   // User environmental x-axis correction in milliGauss
-					magbias[1] = -98.87545;//53.466;//54.646;  	// User environmental y-axis correction in milliGauss
-					magbias[2] = -505.22478;//-109.572;//-480.782; 	// User environmental z-axis correction in milliGauss
+					magbias[0] = 5.1864; //273.4663; //64.997;//132.208;   // User environmental x-axis correction in milliGauss
+					magbias[1] = -98.87545; // 37.4299; ////53.466;//54.646;  	// User environmental y-axis correction in milliGauss
+					magbias[2] = -505.22478; //-680.3665; ////-109.572;//-480.782; 	// User environmental z-axis correction in milliGauss
 
 					// Calculate the magnetometer values in milliGauss
 					// Include factory calibration per data sheet and user environmental corrections
