@@ -23,23 +23,25 @@ void PID(float *command, float *YPR, float *pqr, const float *P_rate, const floa
 {
 	//PID-Controller
 
-	uint32_t Now = micros();
-	dt = ((Now - Prev)/1000000.0f);
+	uint32_t Now = millis();
+	dt = ((Now - Prev)/1000.0f); // should be 100Hz / 0.01s
 	Prev = Now;
 
 	//P
 	rate_reference = (*command - *YPR) * M_PI/180 * *P_angle;
 	error = rate_reference - *pqr;
-	P_u = (rate_reference - *pqr) * *P_rate;
+	P_u = error * *P_rate;
 
-	//D
+	//D Filtered
 	D_u = ((error * *D_rate) - filter_coef) * *N_rate;
 	filter_coef = filter_coef + (D_u * dt);
 
 	//I
 	I_u = I_u + (error * dt  * *I_rate);
 
-	//Sum
+	/* TODO: Anti wind up method */
+
+	//PID
 	*u = P_u + D_u + I_u;
 
 }
