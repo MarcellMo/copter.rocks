@@ -12,13 +12,13 @@
 #include <DAVE3.h>
 #endif
 
-#define RC_UART_Handle 		  UART001_Handle0
+#define RC_UART_Handle UART001_Handle0
 #define BT_UART_Handle UART001_Handle1
 
 //Scale factors for angle and power						// other divisions tried with good stabilization
-#define SCALE_YAW	90.0			// from -10..+10    // divided by 3
-#define SCALE_PITCH	30.0		// from -10..+10		// divided by 10
-#define SCALE_ROLL	30.0	// from -10..+10			// divided by 10
+#define SCALE_YAW	90.0			// from -10..+10    // divided by 3		//nearly stable with rateMode at 20
+#define SCALE_PITCH	90.0			// from -10..+10	// divided by 10	//nearly stable with rateMode at 8
+#define SCALE_ROLL	90.0			// from -10..+10	// divided by 10	//nearly stable with rateMode at 8
 #define SCALE_POWER	100.0			// from 0..100
 
 //Scale factors for joysticks to norm vaue between -1 and 1

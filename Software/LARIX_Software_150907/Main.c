@@ -106,28 +106,26 @@ float u_roll = 0.0;
 float x_yaw[CONTROL_ORDER];
 
 //Controllerparamter
-const float T=0.005;
-const float P_roll =100;//162.0852;//64.3188;
-const float I_roll = 0;//18;//5;
-const float D_roll = 12;//19.1013;//12.0355;
-const float N_roll = 200;//62.4365;//40.5471;
-const float P_pitch =100;//166.4663;//66.0573;
-const float I_pitch = 0;//20;//5;
-const float D_pitch =12;//19.6176;//12.3609;
-const float N_pitch =200;//62.4365;//40.5471;
-const float P_yaw = 110;
-const float I_yaw = 0.15;
-const float D_yaw = 0.5;
-const float N_yaw =200;
 
+const float P_roll = 4;		//160
+const float I_roll = 0;
+const float D_roll = 0.015;
+const float N_roll = 50;
 
-//Controllerpolynomials
-float a_roll[CONTROL_ORDER];
-float a_pitch[CONTROL_ORDER];
-float b_roll[CONTROL_ORDER+1];
-float b_pitch[CONTROL_ORDER+1];
-float a_yaw[CONTROL_ORDER];
-float b_yaw[CONTROL_ORDER+1];
+const float P_pitch = 4;	//160
+const float I_pitch = 0;
+const float D_pitch = 0.015;
+const float N_pitch = 50;
+
+const float P_yaw = 50;	//160
+const float I_yaw = 0; 		//0.15
+const float D_yaw = 0.015; 	//0.5
+const float N_yaw = 50;
+
+//Stab PIDs
+const float P_roll_stab = 4.05;
+const float P_pitch_stab = 4.05;
+const float P_yaw_stab = 6;
 
 //Remote Control
 float powerD = 0.0;
@@ -137,8 +135,6 @@ float rollD = 0.0;
 
 float yaw=0.0;
 float yaw_old=0.0;
-float yaw_dot=0.0;
-uint32_t timePrev = 0;
 
 float YPR[3];
 float pqr[3];
@@ -171,47 +167,20 @@ extern uint32_t timeout_count;
 
 void AttControl_TIMER_ISR(void)
 {
-	GetAngles(YPR,&yoffset);
-	GetRates(pqr);// in rad!
-	GetAccel(acc);// in m/s^2!
+	GetAngles(YPR,&yoffset);	//in deg!
+	GetRates(pqr);				//in rad!
 	GetRCData(&powerD, &yawD_dot, &pitchD, &rollD);
 
-	uint32_t Now = millis();
-	uint32_t Now_new = millis();
-	float dt = ((Now - timePrev)/1000.0f);
-	timePrev = Now;
+	//------Acro/Rate------
+	//P_roll = (-yawD_dot +50)/10;	//to test the P_roll value with yaw
 
-	/* not sure about this I would recommend a simple lowpass filter for pqr */
-	// filter
-	float delta_yaw = YPR[0]-yaw;
-	if (delta_yaw >= 180.0)
-		delta_yaw-=360;
-	if (delta_yaw <= -180.0)
-		delta_yaw+=360;
+	AngleRateController(&yawD_dot, &pqr[2], &P_yaw, &u_yaw_dot);
+	//AngleRateController(&pitchD, &pqr[1], &P_pitch, &u_pitch);
+	//AngleRateController(&rollD, &pqr[0], &P_roll, &u_roll);
 
-	yaw+=0.3*delta_yaw;
-	if (yaw >= 180.0)
-		yaw-=360;
-	if (yaw <= -180.0)
-		yaw+=360;
-
-	//derive
-	delta_yaw=yaw-yaw_old;
-	if (delta_yaw >= 180.0)
-		delta_yaw-=360;
-	if (delta_yaw <= -180.0)
-		delta_yaw+=360;
-	yaw_dot=delta_yaw/dt;
-
-	yaw_old=yaw;
-
-	//yaw control
-	AngleRateController(&yawD_dot, &yaw_dot, &P_yaw, &u_yaw_dot);
-	//AngleController(&yawD_dot, &yaw_dot, CONTROL_ORDER, a_yaw, b_yaw, x_yaw, &u_yaw_dot);
-	//pitch control
-	AngleController(&pitchD, &YPR[1], CONTROL_ORDER, a_pitch, b_pitch, x_pitch, &u_pitch);
-	//roll control
-	AngleController(&rollD, &YPR[2], CONTROL_ORDER, a_roll, b_roll, x_roll, &u_roll);
+	//------PID------
+	PID(&pitchD, &YPR[1], &pqr[1], &P_pitch, &I_pitch, &D_pitch, &P_pitch_stab, &u_pitch, &N_pitch);
+	PID(&rollD, &YPR[2], &pqr[0], &P_roll, &I_roll, &D_roll, &P_roll_stab, &u_roll, &N_roll);
 
 	counter_main++;
 	newvalue=1;
@@ -229,19 +198,6 @@ void Initialize()
 	MPU9150_Setup();
 
 	delay(1000);   //Delay 4000?
-
-    // initilize controller polynomials
-	b_roll[0]=P_roll-I_roll*T-P_roll*N_roll*T+N_roll*I_roll*T*T+D_roll*N_roll;
-	b_roll[1]=I_roll*T-2*P_roll+P_roll*N_roll*T-2*D_roll*N_roll;
-	b_roll[2]=P_roll+D_roll*N_roll;
-	a_roll[0]=1-N_roll*T;
-	a_roll[1]=N_roll*T-2;
-
-	b_pitch[0]=P_pitch-I_pitch*T-P_pitch*N_pitch*T+N_pitch*I_pitch*T*T+D_pitch*N_pitch;
-	b_pitch[1]=I_pitch*T-2*P_pitch+P_pitch*N_pitch*T-2*D_pitch*N_pitch;
-	b_pitch[2]=P_pitch+D_pitch*N_pitch;
-	a_pitch[0]=1-N_pitch*T;
-	a_pitch[1]=N_pitch*T-2;
 
 	WatchRC_Init(); //Initialize RC watchdog
 
@@ -295,9 +251,6 @@ void Initialize()
 
 int main(void)
 {
-	int i=0;
-	int orcount=0;
-
 	Control_P0_9(OUTPUT_PP_GP, VERYSTRONG);
 	Control_P3_2(OUTPUT_PP_GP, VERYSTRONG);
 	Control_P3_1(OUTPUT_PP_GP, VERYSTRONG);
@@ -310,8 +263,6 @@ int main(void)
 	SET_P0_3;
 	SET_P2_0;
 	SET_P2_7;
-
-
 
 	#ifdef LED_test
 	int ortime=0L;
@@ -516,7 +467,7 @@ int main(void)
 					sprintf(USB_Tx_Buffer, "Y:%1.2f P:%1.2f R:%1.2f YOff:%1.2f\n", YPR[0], YPR[1], YPR[2], yoffset);
 					break;
 				case '4':
-					sprintf(USB_Tx_Buffer, "Y_dot:%1.2f\n", yaw_dot);
+					sprintf(USB_Tx_Buffer, "pqr0/roll:%1.2f pqr1/pitch:%1.2f pqr2/yaw:%1.2f P_roll:%1.2f \n", pqr[0], pqr[1], pqr[2], P_roll);
 					break;
 				case '5':
 					sprintf(USB_Tx_Buffer, "PWM1:%f PWM2:%f PWM3:%f PWM4:%f\n", PWM_width[0], PWM_width[1], PWM_width[2], PWM_width[3]);
@@ -525,16 +476,13 @@ int main(void)
 					sprintf(USB_Tx_Buffer, "PWM1:%f PWM2:%f PWM3:%f PWM4:%f\n", actuator_speed_percent[0], actuator_speed_percent[1], actuator_speed_percent[2], actuator_speed_percent[3]);
 					break;
 				case '7':
-					sprintf(USB_Tx_Buffer, "eY:%f eP:%f eR:%f\n", yawD_dot-yaw_dot, pitchD-YPR[1], rollD-YPR[2]);
+					sprintf(USB_Tx_Buffer, "eY:%f eP:%f eR:%f\n", yawD_dot-pqr[2], pitchD-YPR[1], rollD-YPR[2]);
 					break;
 				case '8':
 					sprintf(USB_Tx_Buffer, "TimerSensor:%d TimerMain:%d TimerRC:%d\n", (int)GetSensorCount(), (int)counter_main, (int)GetRCCount());
 					break;
 				case '9':
-
-					updateValues(&p,&t);
-					sprintf(USB_Tx_Buffer, "Pressure: %d Temperature: %d Counter: %d\n",(int)p,(int)t,(int)DPS310_INT_counter);
-
+					sprintf(USB_Tx_Buffer, "x:%1.2f y:%1.2f z:%1.2f\n", acc[0], acc[1], acc[2]);
 					break;
 			}
 			USBD_VCOM_SendString((const char *)USB_Tx_Buffer);
@@ -622,8 +570,8 @@ void Monitoring_TIMER_ISR()
 	MonitorBuffer[1] = (int8_t)((int16_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_YAW) * (yawD_dot - SCALE_YAW)) >> 8);
 	MonitorBuffer[2] = (int8_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_YAW) * (yawD_dot - SCALE_YAW));
 	// YAW
-	MonitorBuffer[3] = (int8_t)((int16_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_YAW) * (yaw_dot - SCALE_YAW)) >> 8);
-	MonitorBuffer[4] = (int8_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_YAW) * (yaw_dot - SCALE_YAW));
+	MonitorBuffer[3] = (int8_t)((int16_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_YAW) * (pqr[2] - SCALE_YAW)) >> 8);
+	MonitorBuffer[4] = (int8_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_YAW) * (pqr[2] - SCALE_YAW));
 	// Pitch desired
 	MonitorBuffer[5] = (int8_t)((int16_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_PITCH) * (pitchD - SCALE_PITCH)) >> 8);
 	MonitorBuffer[6] = (int8_t)(SHRT_MAX + (SHRT_MAX - SHRT_MIN) / (2*SCALE_PITCH) * (pitchD - SCALE_PITCH));
