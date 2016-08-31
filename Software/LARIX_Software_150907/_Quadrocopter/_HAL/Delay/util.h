@@ -17,6 +17,5 @@
 void Timer_CompareMatch_Int_Handler(void);
 void delay(uint32_t pause);
 uint32_t millis();
-uint32_t micros();
 
 #endif /* UTIL_H_ */
