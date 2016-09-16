@@ -32,8 +32,8 @@ void PID(float *command, float *YPR, float *pqr, const float *P_rate, const floa
 	error = rate_reference - *pqr;
 	P_u = error * *P_rate;
 
-	//D Filtered
-	D_u = ((error * *D_rate) - filter_coef) * *N_rate;
+	//D Filtered (D term only on measurement to avoids peaks after large user commands)
+	D_u = ((*pqr * *D_rate) - filter_coef) * *N_rate;
 	filter_coef = filter_coef + (D_u * dt);
 
 	//I
