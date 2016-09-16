@@ -28,6 +28,11 @@
 /* *****************************************************************************
 **                      Private Constant Definitions to be changed            **
 ***************************************************************************** */
+
+/* ATTENTION: This is seriously bad. If ATTITUDEALGORITHM is set to 2 the yaw reading in the flight controller is the Yawrate. 
+But if it is set to 1 the Yaw reading is the heading of the copter. 
+This would lead to a crash.*/
+
 #define ATTITUDEALGORITHM 	2
 /* *****************************************************************************
 **                      Private Macro Definitions                             **
