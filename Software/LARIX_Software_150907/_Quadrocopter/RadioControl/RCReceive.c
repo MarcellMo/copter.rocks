@@ -318,8 +318,8 @@ void GetRCData(float* power, float* yaw_dot, float* pitch, float* roll)
 				*yaw_dot=rudder*SCALE_YAW;
 			else
 				*yaw_dot = 0;
-			*pitch=-aileron*SCALE_PITCH;
-			*roll=-elevator*SCALE_ROLL;
+			*pitch=-elevator*SCALE_PITCH;
+			*roll=-aileron*SCALE_ROLL;
 		}
 	}
 	else

@@ -4,6 +4,7 @@
  *  Created on: 04.04.2015
  *      Author: maan
  */
+// This makes not much sense just use a timer
 
 #include "util.h"
 
@@ -24,4 +25,3 @@ uint32_t millis()
 {
 	return timer_cnt;
 }
-
